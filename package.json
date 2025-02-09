@@ -14,7 +14,7 @@
     "build:cjs": "node ./esbuild.cjs.js",
     "build:types": "tsc -b tsconfig.types.json",
     "build:clear": "rimraf -g dist-* && rimraf -g *.tsbuildinfo",
-    "build": "npm run build:es && npm run build:cjs && npm run build:types",
+    "build": "npm run build:types && npm run build:es && npm run build:cjs",
     "test": "jest",
     "test:cover": "jest --coverage",
     "prepare": "husky",
@@ -34,10 +34,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/alexalexiuc/typedoc-jsdoc-inherit"
+    "url": "git+https://github.com/alexalexiuc/promise-cachex.git"
   },
   "files": [
     "dist-esm",
+    "dist-cjs",
+    "dist-types",
     "package.json",
     "README.md",
     "LICENSE"
