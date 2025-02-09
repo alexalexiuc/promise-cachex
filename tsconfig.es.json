@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": [],
+    "outDir": "dist-es",
+    "stripInternal": true,
+    "importHelpers": true,
+    "module": "esnext",
+    "noEmitHelpers": true,
+  }
+}
