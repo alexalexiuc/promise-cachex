@@ -14,12 +14,12 @@ describe("PromiseCacheX", () => {
 
   it("should store and retrieve a value", async () => {
     const fetcher = jest.fn().mockResolvedValue("test-value");
-    const result = await cache.get("key1", fetcher, { ttl: 5000 });
+    const result = await cache.get("key1", fetcher);
 
     expect(result).toBe("test-value");
     expect(fetcher).toHaveBeenCalledTimes(1);
 
-    const cachedResult = await cache.get("key1", fetcher, { ttl: 5000 });
+    const cachedResult = await cache.get("key1", fetcher);
     expect(cachedResult).toBe("test-value");
     expect(fetcher).toHaveBeenCalledTimes(1);
   });

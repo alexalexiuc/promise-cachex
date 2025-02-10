@@ -57,7 +57,7 @@ export class PromiseCacheX {
   async get<T>(
     key: string,
     fetcher: () => Promise<T>,
-    { ttl }: ItemOptions
+    options?: ItemOptions
   ): Promise<T> {
     const now = Date.now();
 
@@ -70,7 +70,9 @@ export class PromiseCacheX {
       this._delete(key);
     }
     const expiresAt =
-      (ttl ?? this.ttl) === 0 ? +Infinity : now + (ttl || this.ttl);
+      (options?.ttl ?? this.ttl) === 0
+        ? +Infinity
+        : now + (options?.ttl || this.ttl);
     const promise = fetcher();
     this.cache.set(key, {
       key,
