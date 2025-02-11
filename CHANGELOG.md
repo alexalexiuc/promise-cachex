@@ -1,5 +1,9 @@
 # Changelog
 
+## <small>0.1.1 (2025-02-11)</small>
+
+* chore: update gitignore ([dbb9a6b](https://github.com/alexalexiuc/promise-cachex/commit/dbb9a6b))
+
 ## 0.1.0 (2025-02-10)
 
 * feat: Make item options optional ([3d24101](https://github.com/alexalexiuc/promise-cachex/commit/3d24101))
