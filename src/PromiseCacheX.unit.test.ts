@@ -153,7 +153,18 @@ describe("PromiseCacheX", () => {
     expect(cache.size()).toBe(1);
   });
 
-  it("Should also cache a simple promise", async () => {
+  it("Should also cache a non-async function", async () => {
+    const fetcher = jest.fn().mockReturnValue("simple-value");
+
+    const result = await cache.get("simple-key", fetcher);
+    const result2 = await cache.get("simple-key", fetcher);
+
+    expect(result).toBe("simple-value");
+    expect(result2).toBe("simple-value");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("Should also cache a promise", async () => {
     const promise = jest.fn().mockResolvedValue("simple-promise");
 
     const result = await cache.get("simple-key", promise);

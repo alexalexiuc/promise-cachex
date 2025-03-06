@@ -6,6 +6,8 @@ export type CachedItem<T = any> = {
 
 type Cache<T = any> = Map<string, CachedItem<T>>;
 
+type FetchOrPromise<T> = (() => Promise<T> | T) | Promise<T> | T;
+
 export type CacheOptions = {
   /**
    * Default TTL in milliseconds for cached items.
@@ -60,7 +62,7 @@ export class PromiseCacheX {
    */
   async get<T>(
     key: string,
-    fetcherOrPromise: (() => Promise<T>) | Promise<T> | T,
+    fetcherOrPromise: FetchOrPromise<T>,
     options?: ItemOptions
   ): Promise<T> {
     const now = Date.now();
@@ -138,9 +140,7 @@ export class PromiseCacheX {
     }
   }
 
-  private _fetchValue<T>(
-    fetcherOrPromise: (() => Promise<T>) | Promise<T> | T
-  ): Promise<T> | T {
+  private _fetchValue<T>(fetcherOrPromise: FetchOrPromise<T>): Promise<T> | T {
     return typeof fetcherOrPromise === "function"
       ? (fetcherOrPromise as () => Promise<T>)()
       : fetcherOrPromise;
