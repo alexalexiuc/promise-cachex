@@ -179,4 +179,55 @@ describe("PromiseCacheX", () => {
     const result = await cache.get("simple-key", "simple-value");
     expect(result).toBe("simple-value");
   });
+
+  describe("PromiseCacheX - Cleanup Interval", () => {
+    let cache: PromiseCacheX;
+    let setIntervalSpy: jest.SpyInstance;
+    let clearIntervalSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      setIntervalSpy = jest.spyOn(global, "setInterval");
+      clearIntervalSpy = jest.spyOn(global, "clearInterval");
+
+      cache = new PromiseCacheX({ ttl: 1000, cleanupInterval: 5000 });
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.restoreAllMocks();
+    });
+
+    it("should start the cleanup interval when an item is added", async () => {
+      expect(setIntervalSpy).not.toHaveBeenCalled();
+
+      await cache.get("key1", async () => "value", { ttl: 1000 });
+
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should stop the cleanup interval when cache is empty", async () => {
+      await cache.get("key1", async () => "value", { ttl: 1000 });
+
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+      cache.delete("key1");
+
+      jest.runOnlyPendingTimers();
+
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should restart the interval when a new item is added after cleanup", async () => {
+      await cache.get("key1", async () => "value", { ttl: 1000 });
+      cache.delete("key1");
+
+      jest.runOnlyPendingTimers();
+
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+
+      await cache.get("key2", async () => "another value", { ttl: 1000 });
+
+      expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+    });
+  });
 });

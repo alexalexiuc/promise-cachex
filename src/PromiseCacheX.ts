@@ -1,10 +1,10 @@
-export type CachedItem<T = any> = {
+export type CachedItem<T = unknown> = {
   key: string;
   promise: Promise<T> | T;
   expiresAt: number;
 };
 
-type Cache<T = any> = Map<string, CachedItem<T>>;
+type Cache<T = unknown> = Map<string, CachedItem<T>>;
 
 type FetchOrPromise<T> = (() => Promise<T> | T) | Promise<T> | T;
 
@@ -43,13 +43,11 @@ export class PromiseCacheX {
   private cache: Cache = new Map();
   private ttl: number;
   private cleanupInterval: number;
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(options?: CacheOptions) {
     this.ttl = options?.ttl || DEFAULT_TTL;
     this.cleanupInterval = options?.cleanupInterval || DEFAULT_TTL_VERIFICATION;
-
-    // run housekeeping every 5 minutes
-    setInterval(() => this._housekeeping(), this.cleanupInterval);
   }
 
   /**
@@ -70,21 +68,24 @@ export class PromiseCacheX {
     if (this.cache.has(key)) {
       const item = this.cache.get(key)!;
       if (item.expiresAt > now) {
-        return this._handlePromise(key, item.promise);
+        return this._handlePromise(key, item.promise as T);
       }
-      // if cached is expired, remove it
-      this._delete(key);
     }
     const expiresAt =
       (options?.ttl ?? this.ttl) === 0
         ? +Infinity
         : now + (options?.ttl || this.ttl);
     const promise = this._fetchValue(fetcherOrPromise);
+    // for expired cache case, this will overwrite the old cache
     this.cache.set(key, {
       key,
       promise,
       expiresAt,
     });
+
+    // Ensure cleanup is running when a new item is added
+    this._startCleanup();
+
     return this._handlePromise(key, promise);
   }
 
@@ -93,6 +94,8 @@ export class PromiseCacheX {
    */
   delete(key: string): void {
     this._delete(key);
+    // Check if cleanup should be stopped
+    this._stopCleanupIfNeeded();
   }
 
   /**
@@ -100,6 +103,8 @@ export class PromiseCacheX {
    */
   clear(): void {
     this.cache.clear();
+    // Try stop cleanup
+    this._stopCleanupIfNeeded();
   }
 
   /**
@@ -131,6 +136,23 @@ export class PromiseCacheX {
     this.cache.delete(key);
   }
 
+  private _startCleanup(): void {
+    if (!this.cleanupTimer) {
+      this.cleanupTimer = setInterval(() => {
+        this._housekeeping();
+        // Stop cleanup if cache is empty
+        this._stopCleanupIfNeeded();
+      }, this.cleanupInterval);
+    }
+  }
+
+  private _stopCleanupIfNeeded(): void {
+    if (this.cache.size === 0 && this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+  }
+
   private _housekeeping() {
     const now = Date.now();
     for (const [key, item] of this.cache) {
@@ -141,8 +163,11 @@ export class PromiseCacheX {
   }
 
   private _fetchValue<T>(fetcherOrPromise: FetchOrPromise<T>): Promise<T> | T {
-    return typeof fetcherOrPromise === "function"
-      ? (fetcherOrPromise as () => Promise<T>)()
-      : fetcherOrPromise;
+    // Wrap in Promise.resolve to ensure consistent behavior
+    return Promise.resolve(
+      typeof fetcherOrPromise === "function"
+        ? (fetcherOrPromise as () => Promise<T> | T)()
+        : fetcherOrPromise
+    );
   }
 }

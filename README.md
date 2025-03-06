@@ -2,11 +2,11 @@
 
 ## 🚀 High-Performance Promise-Based Caching for JavaScript & TypeScript
 
-PromiseCacheX is a lightweight caching library designed to store and manage **asynchronous promises efficiently**. It eliminates redundant requests, prevents race conditions, and automatically cleans up expired cache entries.
+PromiseCacheX is a lightweight caching library designed to store and manage **asynchronous promises and synchronous values efficiently**. It eliminates redundant requests, prevents race conditions, and automatically cleans up expired cache entries.
 
 ---
 
-## 📦 Installation
+## 📚 Installation
 
 ```sh
 npm install promise-cachex
@@ -34,6 +34,10 @@ async function fetchData() {
   const result2 = await cache.get("key1", fetchData, { ttl: 5000 });
   console.log(result2); // Returns cached value immediately
 })();
+
+// Supports caching synchronous values too
+cache.get("key2", "static value");
+console.log(await cache.get("key2", "static value")); // 'static value'
 ```
 
 ---
@@ -41,6 +45,7 @@ async function fetchData() {
 ## ⚡ Features
 
 ✅ **Promise-Aware** – Stores and returns pending promises to avoid duplicate calls.
+✅ **Supports Both Async and Sync Values** – Cache promises, async functions, sync functions, or direct values.
 ✅ **TTL Expiry** – Items automatically expire after a configurable time.
 ✅ **Automatic Cleanup** – Removes expired entries at a regular interval.
 ✅ **Manual Deletion** – Allows explicit cache clearing when needed.
@@ -49,7 +54,7 @@ async function fetchData() {
 
 ---
 
-## 📜 API
+## 🐜 API
 
 ### **`constructor(options?: CacheOptions)`**
 
@@ -62,7 +67,7 @@ Creates a new instance of `PromiseCacheX`.
 
 ---
 
-### **`get<T>(key: string, fetcher: () => Promise<T>, options?: ItemOptions): Promise<T>`**
+### **`get<T>(key: string, fetcherOrPromise: FetchOrPromise<T>, options?: ItemOptions): Promise<T>`**
 
 Retrieves a cached value or fetches and caches it if not available.
 
@@ -70,8 +75,28 @@ Retrieves a cached value or fetches and caches it if not available.
 | ------ | -------- | --------- | ------------------------------------------ |
 | `ttl`  | `number` | Cache TTL | TTL for the cached item. `0` means no TTL. |
 
+**FetchOrPromise<T>** can be:
+
+- An **async function** returning a promise (`() => Promise<T>`)
+- A **synchronous function** returning a value (`() => T`)
+- A **direct promise** (`Promise<T>`)
+- A **direct value** (`T`)
+
 ```typescript
+// Caching an async function
 const result = await cache.get("key1", async () => "value", { ttl: 5000 });
+
+// Caching a synchronous function
+const syncResult = await cache.get("key2", () => "sync value");
+
+// Caching a direct promise
+const promiseResult = await cache.get(
+  "key3",
+  Promise.resolve("promised value")
+);
+
+// Caching a direct value
+const directResult = await cache.get("key4", "direct value");
 ```
 
 ---
@@ -146,6 +171,7 @@ Here are the latest performance benchmarks for `PromiseCacheX`:
 - ⚡ **Fast and lightweight** (optimized caching)
 - 🛡 **Ensures memory efficiency** (auto-expiring cache)
 - 🔥 **Great for API calls, database queries, and computations**
+- 🌟 **Supports both async and sync values** (no need for multiple caching libraries)
 
 ---
 
