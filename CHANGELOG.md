@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 (2025-03-06)
+
+* feat: Add support for non-async function ([cde931f](https://github.com/alexalexiuc/promise-cachex/commit/cde931f))
+
 ## 1.0.0 (2025-03-06)
 
 * feat!: Add support for promises and native values ([6319464](https://github.com/alexalexiuc/promise-cachex/commit/6319464))
