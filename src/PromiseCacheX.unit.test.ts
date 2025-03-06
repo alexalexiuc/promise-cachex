@@ -152,4 +152,20 @@ describe("PromiseCacheX", () => {
     jest.advanceTimersByTime(10001);
     expect(cache.size()).toBe(1);
   });
+
+  it("Should also cache a simple promise", async () => {
+    const promise = jest.fn().mockResolvedValue("simple-promise");
+
+    const result = await cache.get("simple-key", promise);
+    const result2 = await cache.get("simple-key", promise);
+
+    expect(result).toBe("simple-promise");
+    expect(result2).toBe("simple-promise");
+    expect(promise).toHaveBeenCalledTimes(1);
+  });
+
+  it("Should also cache a simple value", async () => {
+    const result = await cache.get("simple-key", "simple-value");
+    expect(result).toBe("simple-value");
+  });
 });

@@ -1,6 +1,6 @@
 export type CachedItem<T = any> = {
   key: string;
-  promise: Promise<T>;
+  promise: Promise<T> | T;
   expiresAt: number;
 };
 
@@ -51,12 +51,16 @@ export class PromiseCacheX {
   }
 
   /**
-   * If a promise by given key exists, it will be returned, otherwise it will be cached and returned.
+   * Receives a key and a fetcher function or a promise.
+   * If the key is not in the cache, it will fetch the value and cache it.
+   *
+   * Function can also work with non-promise values.
+   *
    * Note that if a promise will error, error will be returned and cache will be deleted.
    */
   async get<T>(
     key: string,
-    fetcher: () => Promise<T>,
+    fetcherOrPromise: (() => Promise<T>) | Promise<T> | T,
     options?: ItemOptions
   ): Promise<T> {
     const now = Date.now();
@@ -73,7 +77,7 @@ export class PromiseCacheX {
       (options?.ttl ?? this.ttl) === 0
         ? +Infinity
         : now + (options?.ttl || this.ttl);
-    const promise = fetcher();
+    const promise = this._fetchValue(fetcherOrPromise);
     this.cache.set(key, {
       key,
       promise,
@@ -112,7 +116,7 @@ export class PromiseCacheX {
     return Array.from(this.cache.keys());
   }
 
-  private async _handlePromise<T>(key: string, promise: Promise<T>) {
+  private async _handlePromise<T>(key: string, promise: Promise<T> | T) {
     try {
       return await promise;
     } catch (error) {
@@ -132,5 +136,13 @@ export class PromiseCacheX {
         this._delete(key);
       }
     }
+  }
+
+  private _fetchValue<T>(
+    fetcherOrPromise: (() => Promise<T>) | Promise<T> | T
+  ): Promise<T> | T {
+    return typeof fetcherOrPromise === "function"
+      ? (fetcherOrPromise as () => Promise<T>)()
+      : fetcherOrPromise;
   }
 }
