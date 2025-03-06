@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0 (2025-03-06)
+
+* feat!: Add support for promises and native values ([6319464](https://github.com/alexalexiuc/promise-cachex/commit/6319464))
+
 ## <small>0.1.2 (2025-03-06)</small>
 
 * fix: Fix types export & add sideEffects free flag ([19648d3](https://github.com/alexalexiuc/promise-cachex/commit/19648d3))
