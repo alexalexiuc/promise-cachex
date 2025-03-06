@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0 (2025-03-06)
+
+* feat: Make sure interval cleansup ([69f21f5](https://github.com/alexalexiuc/promise-cachex/commit/69f21f5))
+
 ## 1.1.0 (2025-03-06)
 
 * feat: Add support for non-async function ([cde931f](https://github.com/alexalexiuc/promise-cachex/commit/cde931f))
