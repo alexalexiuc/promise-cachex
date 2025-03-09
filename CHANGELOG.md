@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0 (2025-03-09)
+
+* feat: Add has method ([2d02a0f](https://github.com/alexalexiuc/promise-cachex/commit/2d02a0f))
+
 ## 1.2.0 (2025-03-06)
 
 * feat: Make sure interval cleansup ([69f21f5](https://github.com/alexalexiuc/promise-cachex/commit/69f21f5))
