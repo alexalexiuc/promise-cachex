@@ -123,6 +123,13 @@ export class PromiseCacheX {
     return Array.from(this.cache.keys());
   }
 
+  /**
+   * Returns true if the key is in the cache.
+   */
+  has(key: string): boolean {
+    return this.cache.has(key);
+  }
+
   private async _handlePromise<T>(key: string, promise: Promise<T> | T) {
     try {
       return await promise;

@@ -180,6 +180,15 @@ describe("PromiseCacheX", () => {
     expect(result).toBe("simple-value");
   });
 
+  it('Should return true for "has" if key exists', async () => {
+    const fetcher = jest.fn().mockResolvedValue("value");
+
+    await cache.get("key1", fetcher, { ttl: 5000 });
+
+    expect(cache.has("key1")).toBe(true);
+    expect(cache.has("key2")).toBe(false);
+  });
+
   describe("PromiseCacheX - Cleanup Interval", () => {
     let cache: PromiseCacheX;
     let setIntervalSpy: jest.SpyInstance;
