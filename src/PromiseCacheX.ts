@@ -18,6 +18,8 @@ export type CacheOptions = {
   /**
    * Interval for running housekeeping.
    * Defaults to 5 minutes.
+   * 0 no cleanup will be run.
+   * Note that this is not the TTL of the items, but the interval for checking expired items.
    */
   cleanupInterval?: number;
 };
@@ -46,8 +48,8 @@ export class PromiseCacheX {
   private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(options?: CacheOptions) {
-    this.ttl = options?.ttl || DEFAULT_TTL;
-    this.cleanupInterval = options?.cleanupInterval || DEFAULT_TTL_VERIFICATION;
+    this.ttl = options?.ttl ?? DEFAULT_TTL;
+    this.cleanupInterval = options?.cleanupInterval ?? DEFAULT_TTL_VERIFICATION;
   }
 
   /**
@@ -144,7 +146,7 @@ export class PromiseCacheX {
   }
 
   private _startCleanup(): void {
-    if (!this.cleanupTimer) {
+    if (!this.cleanupTimer && this.cleanupInterval !== 0) {
       this.cleanupTimer = setInterval(() => {
         this._housekeeping();
         // Stop cleanup if cache is empty

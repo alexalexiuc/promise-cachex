@@ -238,5 +238,15 @@ describe("PromiseCacheX", () => {
 
       expect(setIntervalSpy).toHaveBeenCalledTimes(2);
     });
+
+    it("should not start the cleanup interval if cleanupInterval is 0", async () => {
+      cache = new PromiseCacheX({ ttl: 1000, cleanupInterval: 0 });
+
+      expect(setIntervalSpy).not.toHaveBeenCalled();
+
+      await cache.get("key1", async () => "value", { ttl: 1000 });
+
+      expect(setIntervalSpy).not.toHaveBeenCalled();
+    });
   });
 });
