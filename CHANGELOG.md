@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0 (2025-04-23)
+
+* feat: Add option to not start cleanup interval ([c2c5cb5](https://github.com/alexalexiuc/promise-cachex/commit/c2c5cb5))
+
 ## 1.3.0 (2025-03-09)
 
 * feat: Add has method ([2d02a0f](https://github.com/alexalexiuc/promise-cachex/commit/2d02a0f))
