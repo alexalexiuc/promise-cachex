@@ -100,6 +100,15 @@ const directResult = await cache.get("key4", "direct value");
 ```
 
 ---
+### **`set<T>(key: string, value: T | Promise<T>, options?: ItemOptions): void`**
+
+Sets a value in the cache.
+
+```typescript
+cache.set("key1", "value1", { ttl: 5000 });
+```
+
+---
 
 ### **`delete(key: string): void`**
 
