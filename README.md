@@ -150,6 +150,14 @@ console.log(cache.keys());
 
 ---
 
+### **`has(key: string): boolean`**
+Checks if a key exists in the cache.
+
+```typescript
+console.log(cache.has("key1"));
+```
+---
+
 ## 📊 Benchmark Results
 
 Here are the latest performance benchmarks for `PromiseCacheX`:
