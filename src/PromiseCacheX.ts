@@ -73,20 +73,10 @@ export class PromiseCacheX {
         return this._handlePromise(key, item.promise as T);
       }
     }
-    const expiresAt =
-      (options?.ttl ?? this.ttl) === 0
-        ? +Infinity
-        : now + (options?.ttl || this.ttl);
+    
     const promise = this._fetchValue(fetcherOrPromise);
-    // for expired cache case, this will overwrite the old cache
-    this.cache.set(key, {
-      key,
-      promise,
-      expiresAt,
-    });
 
-    // Ensure cleanup is running when a new item is added
-    this._startCleanup();
+    this._set(key, promise, options);
 
     return this._handlePromise(key, promise);
   }
@@ -130,6 +120,25 @@ export class PromiseCacheX {
    */
   has(key: string): boolean {
     return this.cache.has(key);
+  }
+
+  set<T>(key: string, value: Promise<T> | T, options?: ItemOptions): void {
+    this._set(key, value, options);
+  }
+
+  private async _set(key: string, value: Promise<unknown> | unknown, options?: ItemOptions) {
+    const now = Date.now();
+    const expiresAt =
+      (options?.ttl ?? this.ttl) === 0
+        ? +Infinity
+        : now + (options?.ttl || this.ttl);
+    this.cache.set(key, {
+      key,
+      promise: value,
+      expiresAt,
+    });
+    // Ensure cleanup is running when a new item is added
+    this._startCleanup();
   }
 
   private async _handlePromise<T>(key: string, promise: Promise<T> | T) {
