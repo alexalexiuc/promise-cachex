@@ -1,5 +1,9 @@
 # Changelog
 
+## <small>1.6.1 (2025-09-27)</small>
+
+* docs: Update readme with missing method ([4ff67b6](https://github.com/alexalexiuc/promise-cachex/commit/4ff67b6))
+
 ## 1.6.0 (2025-09-27)
 
 * feat: Update docs ([0868230](https://github.com/alexalexiuc/promise-cachex/commit/0868230))
