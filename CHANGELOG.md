@@ -1,5 +1,9 @@
 # Changelog
 
+## <small>1.4.1 (2025-09-27)</small>
+
+* Merge pull request #1 from alexalexiuc/feat/set-method ([499a872](https://github.com/alexalexiuc/promise-cachex/commit/499a872)), closes [#1](https://github.com/alexalexiuc/promise-cachex/issues/1)
+
 ## 1.4.0 (2025-04-23)
 
 * feat: Add option to not start cleanup interval ([c2c5cb5](https://github.com/alexalexiuc/promise-cachex/commit/c2c5cb5))
