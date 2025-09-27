@@ -188,6 +188,12 @@ describe("PromiseCacheX", () => {
     expect(cache.has("key1")).toBe(true);
     expect(cache.has("key2")).toBe(false);
   });
+  
+  it('Should set a value using set()', async () => {
+    cache.set("key1", "value1", { ttl: 5000 });
+    expect(cache.has("key1")).toBe(true);
+    expect(await cache.get("key1", () => "new-value")).toBe("value1");
+  });
 
   describe("PromiseCacheX - Cleanup Interval", () => {
     let cache: PromiseCacheX;
