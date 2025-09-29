@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.0 (2025-09-29)
+
+* feat: Add loose & strict cache typings ([d3c3892](https://github.com/alexalexiuc/promise-cachex/commit/d3c3892))
+
 ## <small>1.6.1 (2025-09-27)</small>
 
 * docs: Update readme with missing method ([4ff67b6](https://github.com/alexalexiuc/promise-cachex/commit/4ff67b6))
