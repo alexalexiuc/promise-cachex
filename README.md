@@ -158,6 +158,114 @@ console.log(cache.has("key1"));
 ```
 ---
 
+## 🔤 Typing Modes: **Strict vs Loose** (Generics)
+
+`PromiseCacheX` lets you choose between **strict, single-type caches** and a **loose, multi-type cache**—and still allows **per-call type parameters** on `get`/`set`.
+
+### How it works
+
+The class is generic: `PromiseCacheX<T = unknown>`.
+
+* If you **omit** `T`, the cache runs in **loose mode** (accepts mixed value types).
+* If you **provide** `T`, the cache runs in **strict mode** (all values must conform to `T`).
+* You can still provide a type argument to `get<U>()` and `set<U>()`, but it is **constrained** so that `U` must extend the cache’s type.
+
+**Method signatures (simplified):**
+
+```ts
+class PromiseCacheX<T = unknown> {
+  get<U extends T = T>(
+    key: string,
+    fetcherOrPromise: (() => Promise<U> | U) | Promise<U> | U,
+    options?: { ttl?: number }
+  ): Promise<U>;
+
+  set<U extends T>(
+    key: string,
+    value: U | Promise<U>,
+    options?: { ttl?: number }
+  ): void;
+}
+```
+
+> Note: When `T` is omitted, the library treats it as “loose” so mixed types are allowed. When `T` is provided, `U` is constrained to that type.
+
+---
+
+### 🧰 Loose mode (no generic) — store **multiple types**
+
+When you don’t pass a generic, you can mix types freely. You may still annotate each call for clarity.
+
+```ts
+import { PromiseCacheX } from "promise-cachex";
+
+const loose = new PromiseCacheX(); // T omitted → loose mode
+
+// Store different types
+await loose.get<number>("n1", 42);
+await loose.get<string>("s1", () => "hello");
+await loose.get<{ id: string }>("u1", Promise.resolve({ id: "abc" }));
+
+// All OK — loose mode accepts them
+```
+
+Use this for a shared utility cache with heterogeneous values.
+
+---
+
+### 🔒 Strict mode (typed cache) — enforce **one value type**
+
+Provide `T` to restrict the cache to a single type. Per-call generics on `get`/`set` must **extend** that type.
+
+```ts
+type User = { id: number; name: string };
+
+const strict = new PromiseCacheX<User>(); // typed cache
+
+// ✅ OK: value matches `User`
+await strict.get<User>("u:1", () => ({ id: 1, name: "Ana" }));
+
+// ❌ Error: `string` does not extend `User`
+// await strict.get<string>("bad", "oops");
+
+// ✅ OK: promise of `User`
+strict.set("u:2", Promise.resolve({ id: 2, name: "Ion" }));
+```
+
+This is ideal for domain caches (e.g., Users, Products) where consistency matters.
+
+---
+
+### 🎯 Narrowing inside strict mode
+
+Because `U extends T`, you can **narrow** on a call when it’s safe:
+
+```ts
+type User = { id: number; name: string };
+type MaybeUser = User | null;
+
+const cache = new PromiseCacheX<MaybeUser>();
+
+// ✅ OK: `User` is a subtype of `User | null`
+const u = await cache.get<User>("u:1", async () => ({ id: 1, name: "Ana" }));
+
+// ✅ Also OK: storing `null`
+await cache.get<MaybeUser>("u:2", null);
+
+// ❌ Error: `string` not assignable to `User | null`
+// await cache.get<string>("bad", "nope");
+```
+
+> Tip: Using unions like `User | null` lets you express cacheable absence while keeping strong typing.
+
+---
+
+### ✅ When to use which
+
+* **Loose mode** (omit `T`): quick utility cache, heterogeneous values, prototyping.
+* **Strict mode** (`PromiseCacheX<T>`): domain caches with strong guarantees and easier refactors.
+---
+
 ## 📊 Benchmark Results
 
 Here are the latest performance benchmarks for `PromiseCacheX`:

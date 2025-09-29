@@ -255,4 +255,25 @@ describe("PromiseCacheX", () => {
       expect(setIntervalSpy).not.toHaveBeenCalled();
     });
   });
+  
+  describe("Type Handling", () => {
+    it('Should restrict type on get if class instantiated with generic type', async () => {
+      const typedCache = new PromiseCacheX<number>({ ttl: 5000 });
+      const fetcher = jest.fn().mockResolvedValue(42);
+      
+      await typedCache.get("num-key", fetcher);
+
+      // @ts-expect-error - Should error if fetcher returns wrong type
+      await typedCache.get("num-key", async () => "string-value");
+    });
+    
+    it('Should restrict type on set if class instantiated with generic type', () => {
+      const typedCache = new PromiseCacheX<string>({ ttl: 5000 });
+      
+      typedCache.set("str-key", "a string value");
+
+      // @ts-expect-error - Should error if setting wrong type
+      typedCache.set("str-key", 12345);
+    });
+  });
 });

@@ -1,3 +1,5 @@
+type LooseIfUnknown<T> = unknown extends T ? any : T;
+
 export type CachedItem<T = unknown> = {
   key: string;
   promise: Promise<T> | T;
@@ -25,7 +27,7 @@ export type CacheOptions = {
 };
 
 type ItemOptions = {
-  /**
+    /**
    * TTL in milliseconds for the cached item.
    * If not set, defaults to the cache's TTL.
    * 0 TTL will cache indefinitely.
@@ -37,12 +39,16 @@ const DEFAULT_TTL = 1000 * 60 * 60; // 1 hour
 const DEFAULT_TTL_VERIFICATION = 1000 * 60 * 5; // 5 minutes
 
 /**
- * A cache that stores promises and their results.
- *
+ * Generic promise/value cache.
+ * 
  * The cache will automatically remove expired items, at a given interval.
+ * 
+ * Typescript generics:
+ * If you instantiate without a type arg (PromiseCacheX<>), value type is "loose" (any).
+ * If you instantiate with a type (e.g. PromiseCacheX<number>), all values are restricted to that type.
  */
-export class PromiseCacheX {
-  private cache: Cache = new Map();
+export class PromiseCacheX<T = unknown> {
+  private cache: Cache<LooseIfUnknown<T>> = new Map();
   private ttl: number;
   private cleanupInterval: number;
   private cleanupTimer: NodeJS.Timeout | null = null;
@@ -60,25 +66,23 @@ export class PromiseCacheX {
    *
    * Note that if a promise will error, error will be returned and cache will be deleted.
    */
-  async get<T>(
+  async get<U extends LooseIfUnknown<T> = LooseIfUnknown<T>>(
     key: string,
-    fetcherOrPromise: FetchOrPromise<T>,
+    fetcherOrPromise: FetchOrPromise<U>,
     options?: ItemOptions
-  ): Promise<T> {
+  ): Promise<U> {
     const now = Date.now();
 
     if (this.cache.has(key)) {
       const item = this.cache.get(key)!;
       if (item.expiresAt > now) {
-        return this._handlePromise(key, item.promise as T);
+        return this._handlePromise<U>(key, item.promise as Promise<U> | U);
       }
     }
-    
-    const promise = this._fetchValue(fetcherOrPromise);
 
-    this._set(key, promise, options);
-
-    return this._handlePromise(key, promise);
+    const promise = this._fetchValue<U>(fetcherOrPromise);
+    this._set<U>(key, promise, options);
+    return this._handlePromise<U>(key, promise);
   }
 
   /**
@@ -122,11 +126,19 @@ export class PromiseCacheX {
     return this.cache.has(key);
   }
 
-  set<T>(key: string, value: Promise<T> | T, options?: ItemOptions): void {
-    this._set(key, value, options);
+  set<U extends LooseIfUnknown<T>>(
+    key: string,
+    value: Promise<U> | U,
+    options?: ItemOptions
+  ): void {
+    this._set<U>(key, value, options);
   }
 
-  private async _set(key: string, value: Promise<unknown> | unknown, options?: ItemOptions) {
+  private _set<U extends LooseIfUnknown<T>>(
+    key: string,
+    value: Promise<U> | U,
+    options?: ItemOptions
+  ) {
     const now = Date.now();
     const expiresAt =
       (options?.ttl ?? this.ttl) === 0
@@ -141,7 +153,10 @@ export class PromiseCacheX {
     this._startCleanup();
   }
 
-  private async _handlePromise<T>(key: string, promise: Promise<T> | T) {
+  private async _handlePromise<U extends LooseIfUnknown<T>>(
+    key: string,
+    promise: Promise<U> | U
+  ): Promise<U> {
     try {
       return await promise;
     } catch (error) {
@@ -174,17 +189,17 @@ export class PromiseCacheX {
   private _housekeeping() {
     const now = Date.now();
     for (const [key, item] of this.cache) {
-      if (item.expiresAt <= now) {
-        this._delete(key);
-      }
+      if (item.expiresAt <= now) this._delete(key);
     }
   }
 
-  private _fetchValue<T>(fetcherOrPromise: FetchOrPromise<T>): Promise<T> | T {
+  private _fetchValue<U extends LooseIfUnknown<T>>(
+    fetcherOrPromise: FetchOrPromise<U>
+  ): Promise<U> | U {
     // Wrap in Promise.resolve to ensure consistent behavior
     return Promise.resolve(
       typeof fetcherOrPromise === "function"
-        ? (fetcherOrPromise as () => Promise<T> | T)()
+        ? (fetcherOrPromise as () => Promise<U> | U)()
         : fetcherOrPromise
     );
   }
