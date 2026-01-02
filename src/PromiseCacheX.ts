@@ -4,7 +4,6 @@ export type CachedItem<T = unknown> = {
   key: string;
   promise: Promise<T> | T;
   expiresAt: number;
-  lastAccessedAt: number;
   isResolved: boolean;
 };
 
@@ -87,8 +86,8 @@ export class PromiseCacheX<T = unknown> {
     if (this.cache.has(key)) {
       const item = this.cache.get(key)!;
       if (item.expiresAt > now) {
-        // Update access time for LRU tracking
-        item.lastAccessedAt = now;
+        // Move to end of Map for LRU tracking (most recently used)
+        this._moveToEnd(key, item);
         return this._handlePromise<U>(key, item.promise as Promise<U> | U);
       }
     }
@@ -184,7 +183,6 @@ export class PromiseCacheX<T = unknown> {
       key,
       promise: value,
       expiresAt,
-      lastAccessedAt: now,
       isResolved: !isPromise,
     });
 
@@ -214,6 +212,15 @@ export class PromiseCacheX<T = unknown> {
 
   private _delete(key: string): void {
     this.cache.delete(key);
+  }
+
+  /**
+   * Moves an item to the end of the Map (most recently used position).
+   * This exploits Map's insertion order for O(1) LRU tracking.
+   */
+  private _moveToEnd(key: string, item: CachedItem<LooseIfUnknown<T>>): void {
+    this.cache.delete(key);
+    this.cache.set(key, item);
   }
 
   private _startCleanup(): void {
@@ -260,24 +267,18 @@ export class PromiseCacheX<T = unknown> {
   }
 
   /**
-   * Finds the least recently accessed item that is safe to evict.
+   * Finds the least recently used item that is safe to evict.
+   * Uses Map insertion order - first resolved item is LRU.
    * Skips items with pending (unresolved) promises.
    * Returns null if no evictable items exist.
    */
   private _findLRUCandidate(): string | null {
-    let oldestKey: string | null = null;
-    let oldestTime = Infinity;
-
     for (const [key, item] of this.cache) {
-      if (!item.isResolved) continue;
-
-      if (item.lastAccessedAt < oldestTime) {
-        oldestTime = item.lastAccessedAt;
-        oldestKey = key;
+      if (item.isResolved) {
+        return key;
       }
     }
-
-    return oldestKey;
+    return null;
   }
 
   /**

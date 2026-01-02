@@ -74,8 +74,8 @@ console.log(cache.size()); // 1000
 
 ### How LRU Eviction Works
 
-1. **Access Tracking** – Each `get()` call updates the item's "last accessed" timestamp
-2. **Eviction on Insert** – When adding a new key would exceed `maxEntries`, the least recently accessed item is evicted
+1. **Access Tracking** – Each `get()` call moves the item to the end of the internal Map (most recently used position)
+2. **Eviction on Insert** – When adding a new key would exceed `maxEntries`, the least recently used item is evicted in O(1) time
 3. **Pending Promise Protection** – Items with unresolved promises are **never evicted** to preserve promise coalescing
 
 ### Important Behaviors
@@ -347,19 +347,20 @@ Here are the latest performance benchmarks for `PromiseCacheX`:
 
 | Task                                 | Latency Avg (ns) | Throughput Avg (ops/s) |
 | ------------------------------------ | ---------------- | ---------------------- |
-| Cache 1,000 Keys                     | 216,853          | 4,824                  |
-| Cache 10,000 Keys                    | 2,213,626        | 461                    |
-| Retrieve Cached Values (1,000 keys)  | 221,039          | 4,756                  |
-| Retrieve Cached Values (10,000 keys) | 2,136,370        | 476                    |
+| Cache 1,000 Keys                     | 344,310          | 3,685                  |
+| Cache 10,000 Keys                    | 3,463,749        | 308                    |
+| Retrieve Cached Values (1,000 keys)  | 343,742          | 3,699                  |
+| Retrieve Cached Values (10,000 keys) | 3,475,116        | 307                    |
 
-### **Memory & CPU Usage**
+### **LRU Eviction Performance**
 
-| Action                       | Memory (MB) | CPU Time (ms) |
-| ---------------------------- | ----------- | ------------- |
-| After caching 1,000 keys     | 153.22      | 21,296        |
-| After caching 10,000 keys    | 208.22      | 39,687        |
-| After retrieving 1,000 keys  | 206.88      | 60,765        |
-| After retrieving 10,000 keys | 271.31      | 83,984        |
+| Task                                    | Latency Avg (ns) | Throughput Avg (ops/s) | Notes                    |
+| --------------------------------------- | ---------------- | ---------------------- | ------------------------ |
+| LRU Eviction (10k inserts, max 1,000)   | 10,032,003       | 102                    | 9,000 evictions          |
+| LRU Eviction (10k inserts, max 100)     | 6,137,702        | 171                    | 9,900 evictions          |
+| LRU Cache Hits with Reordering (1k)     | 551,000 (median) | 1,815                  | 1,000 Map reorder ops    |
+
+> **Note**: Smaller `maxEntries` can be faster because `_findLRUCandidate()` returns the first resolved item in O(1) time. With fewer entries, there's less chance of pending promises blocking eviction.
 
 ---
 
