@@ -260,20 +260,222 @@ describe("PromiseCacheX", () => {
     it('Should restrict type on get if class instantiated with generic type', async () => {
       const typedCache = new PromiseCacheX<number>({ ttl: 5000 });
       const fetcher = jest.fn().mockResolvedValue(42);
-      
+
       await typedCache.get("num-key", fetcher);
 
       // @ts-expect-error - Should error if fetcher returns wrong type
       await typedCache.get("num-key", async () => "string-value");
     });
-    
+
     it('Should restrict type on set if class instantiated with generic type', () => {
       const typedCache = new PromiseCacheX<string>({ ttl: 5000 });
-      
+
       typedCache.set("str-key", "a string value");
 
       // @ts-expect-error - Should error if setting wrong type
       typedCache.set("str-key", 12345);
+    });
+  });
+
+  describe("LRU Eviction", () => {
+    it("should evict least recently used item when maxEntries is reached", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 3 });
+
+      await lruCache.get("key1", "value1");
+      await lruCache.get("key2", "value2");
+      await lruCache.get("key3", "value3");
+
+      expect(lruCache.size()).toBe(3);
+
+      // Adding 4th item should evict key1 (oldest)
+      await lruCache.get("key4", "value4");
+
+      expect(lruCache.size()).toBe(3);
+      expect(lruCache.has("key1")).toBe(false);
+      expect(lruCache.has("key2")).toBe(true);
+      expect(lruCache.has("key3")).toBe(true);
+      expect(lruCache.has("key4")).toBe(true);
+    });
+
+    it("should not evict recently accessed items", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 3 });
+
+      await lruCache.get("key1", "value1");
+      jest.advanceTimersByTime(100);
+      await lruCache.get("key2", "value2");
+      jest.advanceTimersByTime(100);
+      await lruCache.get("key3", "value3");
+
+      // Access key1 to make it recently used
+      jest.advanceTimersByTime(100);
+      await lruCache.get("key1", "value1");
+
+      // Adding 4th item should evict key2 (least recently accessed)
+      jest.advanceTimersByTime(100);
+      await lruCache.get("key4", "value4");
+
+      expect(lruCache.size()).toBe(3);
+      expect(lruCache.has("key1")).toBe(true);
+      expect(lruCache.has("key2")).toBe(false);
+      expect(lruCache.has("key3")).toBe(true);
+      expect(lruCache.has("key4")).toBe(true);
+    });
+
+    it("should protect pending promises from eviction", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 2 });
+
+      // Create a slow pending promise
+      let resolvePending: (value: string) => void;
+      const pendingPromise = new Promise<string>((resolve) => {
+        resolvePending = resolve;
+      });
+
+      // Start the pending request (not awaited yet)
+      const pending = lruCache.get("pending", () => pendingPromise);
+
+      // Add resolved items
+      await lruCache.get("key1", "value1");
+
+      // Cache is at capacity (pending + key1), but pending is protected
+      // Adding another should evict key1, not pending
+      await lruCache.get("key2", "value2");
+
+      expect(lruCache.has("pending")).toBe(true);
+      expect(lruCache.has("key1")).toBe(false);
+      expect(lruCache.has("key2")).toBe(true);
+
+      // Resolve the pending promise
+      resolvePending!("resolved");
+      await pending;
+    });
+
+    it("should allow eviction of resolved promises", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 2 });
+
+      // Add two resolved items
+      await lruCache.get("key1", "value1");
+      jest.advanceTimersByTime(100);
+      await lruCache.get("key2", "value2");
+
+      // Both are now resolved and evictable
+      jest.advanceTimersByTime(100);
+      await lruCache.get("key3", "value3");
+
+      expect(lruCache.size()).toBe(2);
+      expect(lruCache.has("key1")).toBe(false);
+      expect(lruCache.has("key2")).toBe(true);
+      expect(lruCache.has("key3")).toBe(true);
+    });
+
+    it("should not evict items when maxEntries is undefined (backward compatible)", async () => {
+      const unboundedCache = new PromiseCacheX({ ttl: 5000 });
+
+      for (let i = 0; i < 100; i++) {
+        await unboundedCache.get(`key${i}`, `value${i}`);
+      }
+
+      expect(unboundedCache.size()).toBe(100);
+      expect(unboundedCache.getMaxEntries()).toBeUndefined();
+    });
+
+    it("should return correct maxEntries and isAtCapacity values", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 2 });
+
+      expect(lruCache.getMaxEntries()).toBe(2);
+      expect(lruCache.isAtCapacity()).toBe(false);
+
+      await lruCache.get("key1", "value1");
+      expect(lruCache.isAtCapacity()).toBe(false);
+
+      await lruCache.get("key2", "value2");
+      expect(lruCache.isAtCapacity()).toBe(true);
+    });
+
+    it("should handle edge case when all items are pending", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 2 });
+
+      let resolve1: (value: string) => void;
+      let resolve2: (value: string) => void;
+
+      const promise1 = new Promise<string>((r) => { resolve1 = r; });
+      const promise2 = new Promise<string>((r) => { resolve2 = r; });
+
+      const p1 = lruCache.get("pending1", () => promise1);
+      const p2 = lruCache.get("pending2", () => promise2);
+
+      // Both are pending, cannot evict either
+      // Adding a third should exceed maxEntries but not crash
+      const p3 = lruCache.get("pending3", "immediate");
+
+      expect(lruCache.size()).toBe(3); // Exceeds maxEntries temporarily
+
+      // Resolve promises
+      resolve1!("resolved1");
+      resolve2!("resolved2");
+      await Promise.all([p1, p2, p3]);
+    });
+
+    it("should not evict item being updated", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 2 });
+
+      await lruCache.get("key1", "value1");
+      await lruCache.get("key2", "value2");
+
+      // Update key1 should not trigger eviction of key1 itself
+      lruCache.set("key1", "updated-value1");
+
+      expect(lruCache.size()).toBe(2);
+      expect(await lruCache.get("key1", "fallback")).toBe("updated-value1");
+    });
+
+    it("should work correctly with TTL expiration", async () => {
+      const lruCache = new PromiseCacheX({
+        ttl: 1000,
+        maxEntries: 3,
+        cleanupInterval: 500
+      });
+
+      await lruCache.get("key1", "value1");
+      await lruCache.get("key2", "value2");
+      await lruCache.get("key3", "value3");
+
+      // Expire key1 via TTL
+      jest.advanceTimersByTime(1001);
+
+      // key1 should be expired but still in cache until cleanup
+      // Add key4 should evict based on LRU (key1 already expired)
+      await lruCache.get("key4", "value4");
+
+      expect(lruCache.has("key4")).toBe(true);
+    });
+
+    it("should handle maxEntries of 1", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 1 });
+
+      await lruCache.get("key1", "value1");
+      expect(lruCache.size()).toBe(1);
+
+      await lruCache.get("key2", "value2");
+      expect(lruCache.size()).toBe(1);
+      expect(lruCache.has("key1")).toBe(false);
+      expect(lruCache.has("key2")).toBe(true);
+    });
+
+    it("should mark rejected promises as resolved for eviction", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 2 });
+
+      // The rejected promise will be removed from cache due to error handling
+      await expect(
+        lruCache.get("key1", () => Promise.reject(new Error("fail")))
+      ).rejects.toThrow("fail");
+
+      // Cache should be empty (rejected promises are auto-removed)
+      expect(lruCache.size()).toBe(0);
+
+      // Add items normally
+      await lruCache.get("key2", "value2");
+      await lruCache.get("key3", "value3");
+      expect(lruCache.size()).toBe(2);
     });
   });
 });

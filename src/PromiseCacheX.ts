@@ -4,6 +4,8 @@ export type CachedItem<T = unknown> = {
   key: string;
   promise: Promise<T> | T;
   expiresAt: number;
+  lastAccessedAt: number;
+  isResolved: boolean;
 };
 
 type Cache<T = unknown> = Map<string, CachedItem<T>>;
@@ -24,6 +26,13 @@ export type CacheOptions = {
    * Note that this is not the TTL of the items, but the interval for checking expired items.
    */
   cleanupInterval?: number;
+  /**
+   * Maximum number of entries in the cache.
+   * When the limit is reached, the least recently used entry is evicted.
+   * Entries with pending (unresolved) promises are protected from eviction.
+   * If not set, the cache is unbounded.
+   */
+  maxEntries?: number;
 };
 
 type ItemOptions = {
@@ -52,10 +61,12 @@ export class PromiseCacheX<T = unknown> {
   private ttl: number;
   private cleanupInterval: number;
   private cleanupTimer: NodeJS.Timeout | null = null;
+  private maxEntries: number | undefined;
 
   constructor(options?: CacheOptions) {
     this.ttl = options?.ttl ?? DEFAULT_TTL;
     this.cleanupInterval = options?.cleanupInterval ?? DEFAULT_TTL_VERIFICATION;
+    this.maxEntries = options?.maxEntries;
   }
 
   /**
@@ -76,6 +87,8 @@ export class PromiseCacheX<T = unknown> {
     if (this.cache.has(key)) {
       const item = this.cache.get(key)!;
       if (item.expiresAt > now) {
+        // Update access time for LRU tracking
+        item.lastAccessedAt = now;
         return this._handlePromise<U>(key, item.promise as Promise<U> | U);
       }
     }
@@ -126,6 +139,21 @@ export class PromiseCacheX<T = unknown> {
     return this.cache.has(key);
   }
 
+  /**
+   * Returns the maximum entries limit, or undefined if unbounded.
+   */
+  getMaxEntries(): number | undefined {
+    return this.maxEntries;
+  }
+
+  /**
+   * Returns true if the cache is at or over capacity.
+   * Always returns false if maxEntries is not set.
+   */
+  isAtCapacity(): boolean {
+    return this.maxEntries !== undefined && this.cache.size >= this.maxEntries;
+  }
+
   set<U extends LooseIfUnknown<T>>(
     key: string,
     value: Promise<U> | U,
@@ -144,11 +172,30 @@ export class PromiseCacheX<T = unknown> {
       (options?.ttl ?? this.ttl) === 0
         ? +Infinity
         : now + (options?.ttl || this.ttl);
+
+    const isPromise = value instanceof Promise;
+
+    // Evict before inserting if key doesn't exist and we're at capacity
+    if (!this.cache.has(key)) {
+      this._evictIfNeeded();
+    }
+
     this.cache.set(key, {
       key,
       promise: value,
       expiresAt,
+      lastAccessedAt: now,
+      isResolved: !isPromise,
     });
+
+    // Track promise resolution to enable future eviction
+    if (isPromise) {
+      (value as Promise<U>).then(
+        () => this._markResolved(key),
+        () => this._markResolved(key)
+      );
+    }
+
     // Ensure cleanup is running when a new item is added
     this._startCleanup();
   }
@@ -190,6 +237,56 @@ export class PromiseCacheX<T = unknown> {
     const now = Date.now();
     for (const [key, item] of this.cache) {
       if (item.expiresAt <= now) this._delete(key);
+    }
+  }
+
+  /**
+   * Evicts least recently used entries until cache is under maxEntries.
+   * Protects entries with pending (unresolved) promises from eviction.
+   */
+  private _evictIfNeeded(): void {
+    if (this.maxEntries === undefined) return;
+
+    while (this.cache.size >= this.maxEntries) {
+      const evictKey = this._findLRUCandidate();
+      if (evictKey === null) {
+        // All items are pending promises - cannot evict
+        break;
+      }
+      this._delete(evictKey);
+    }
+
+    this._stopCleanupIfNeeded();
+  }
+
+  /**
+   * Finds the least recently accessed item that is safe to evict.
+   * Skips items with pending (unresolved) promises.
+   * Returns null if no evictable items exist.
+   */
+  private _findLRUCandidate(): string | null {
+    let oldestKey: string | null = null;
+    let oldestTime = Infinity;
+
+    for (const [key, item] of this.cache) {
+      if (!item.isResolved) continue;
+
+      if (item.lastAccessedAt < oldestTime) {
+        oldestTime = item.lastAccessedAt;
+        oldestKey = key;
+      }
+    }
+
+    return oldestKey;
+  }
+
+  /**
+   * Marks a cached item as resolved, making it eligible for LRU eviction.
+   */
+  private _markResolved(key: string): void {
+    const item = this.cache.get(key);
+    if (item) {
+      item.isResolved = true;
     }
   }
 

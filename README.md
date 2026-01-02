@@ -47,10 +47,56 @@ console.log(await cache.get("key2", "static value")); // 'static value'
 ✅ **Promise-Aware** – Stores and returns pending promises to avoid duplicate calls.
 ✅ **Supports Both Async and Sync Values** – Cache promises, async functions, sync functions, or direct values.
 ✅ **TTL Expiry** – Items automatically expire after a configurable time.
+✅ **LRU Eviction** – Bounded caches with least-recently-used eviction policy.
 ✅ **Automatic Cleanup** – Removes expired entries at a regular interval.
 ✅ **Manual Deletion** – Allows explicit cache clearing when needed.
 ✅ **Error Handling** – Removes failed promises from the cache.
 ✅ **Efficient & Fast** – Optimized for speed and low memory overhead.
+
+---
+
+## 🗑️ LRU Eviction (Bounded Cache)
+
+For production use cases where memory must be bounded, use the `maxEntries` option to limit cache entries:
+
+```typescript
+const cache = new PromiseCacheX({
+  ttl: 60000,
+  maxEntries: 1000  // Maximum 1000 entries
+});
+
+// When cache reaches 1000 entries, least recently used items are evicted
+for (let i = 0; i < 1500; i++) {
+  await cache.get(`key${i}`, `value${i}`);
+}
+console.log(cache.size()); // 1000
+```
+
+### How LRU Eviction Works
+
+1. **Access Tracking** – Each `get()` call updates the item's "last accessed" timestamp
+2. **Eviction on Insert** – When adding a new key would exceed `maxEntries`, the least recently accessed item is evicted
+3. **Pending Promise Protection** – Items with unresolved promises are **never evicted** to preserve promise coalescing
+
+### Important Behaviors
+
+- **TTL vs LRU**: Items may be evicted before their TTL expires if the cache is at capacity
+- **Backward Compatible**: If `maxEntries` is not set, the cache is unbounded (original behavior)
+- **Temporary Overflow**: If all items have pending promises, cache may temporarily exceed `maxEntries`
+
+```typescript
+// Pending promises are protected from eviction
+const cache = new PromiseCacheX({ maxEntries: 2 });
+
+const slow = cache.get("slow", () =>
+  new Promise(r => setTimeout(() => r("done"), 5000))
+);
+
+await cache.get("key1", "value1");
+await cache.get("key2", "value2"); // Evicts key1, not "slow"
+
+console.log(cache.has("slow")); // true (protected while pending)
+```
 
 ---
 
@@ -64,6 +110,7 @@ Creates a new instance of `PromiseCacheX`.
 | ----------------- | -------- | -------------------- | ------------------------------------------------- |
 | `ttl`             | `number` | `3600000` (1 hour)   | Default TTL in milliseconds. `0` means no TTL.    |
 | `cleanupInterval` | `number` | `300000` (5 minutes) | Interval in milliseconds to remove expired items. |
+| `maxEntries`      | `number` | `undefined`          | Max cache entries. When reached, LRU items are evicted. |
 
 ---
 
@@ -156,6 +203,32 @@ Checks if a key exists in the cache.
 ```typescript
 console.log(cache.has("key1"));
 ```
+
+---
+
+### **`getMaxEntries(): number | undefined`**
+
+Returns the maximum entries limit, or `undefined` if unbounded.
+
+```typescript
+const cache = new PromiseCacheX({ maxEntries: 1000 });
+console.log(cache.getMaxEntries()); // 1000
+```
+
+---
+
+### **`isAtCapacity(): boolean`**
+
+Returns `true` if the cache is at or over its maximum entries limit.
+
+```typescript
+const cache = new PromiseCacheX({ maxEntries: 2 });
+await cache.get("key1", "value1");
+console.log(cache.isAtCapacity()); // false
+await cache.get("key2", "value2");
+console.log(cache.isAtCapacity()); // true
+```
+
 ---
 
 ## 🔤 Typing Modes: **Strict vs Loose** (Generics)
