@@ -173,10 +173,14 @@ export class PromiseCacheX<T = unknown> {
         : now + (options?.ttl || this.ttl);
 
     const isPromise = value instanceof Promise;
+    const isNewKey = !this.cache.has(key);
 
-    // Evict before inserting if key doesn't exist and we're at capacity
-    if (!this.cache.has(key)) {
+    if (isNewKey) {
+      // Evict before inserting if we're at capacity
       this._evictIfNeeded();
+    } else {
+      // Delete existing key so re-insert moves it to end (most recently used)
+      this.cache.delete(key);
     }
 
     this.cache.set(key, {

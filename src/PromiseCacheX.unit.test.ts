@@ -428,6 +428,26 @@ describe("PromiseCacheX", () => {
       expect(await lruCache.get("key1", "fallback")).toBe("updated-value1");
     });
 
+    it("should update LRU position when set() is called on existing key", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 3 });
+
+      await lruCache.get("key1", "value1");
+      await lruCache.get("key2", "value2");
+      await lruCache.get("key3", "value3");
+
+      // Update key1 via set() - should move it to most recently used
+      lruCache.set("key1", "updated-value1");
+
+      // Adding key4 should evict key2 (now the LRU), not key1
+      await lruCache.get("key4", "value4");
+
+      expect(lruCache.size()).toBe(3);
+      expect(lruCache.has("key1")).toBe(true); // Updated, so moved to end
+      expect(lruCache.has("key2")).toBe(false); // LRU, evicted
+      expect(lruCache.has("key3")).toBe(true);
+      expect(lruCache.has("key4")).toBe(true);
+    });
+
     it("should work correctly with TTL expiration", async () => {
       const lruCache = new PromiseCacheX({
         ttl: 1000,
