@@ -172,7 +172,7 @@ export class PromiseCacheX<T = unknown> {
         ? +Infinity
         : now + (options?.ttl || this.ttl);
 
-    const isPromise = value instanceof Promise;
+    const isThenable = this._isThenable(value);
     const isNewKey = !this.cache.has(key);
 
     if (isNewKey) {
@@ -187,15 +187,13 @@ export class PromiseCacheX<T = unknown> {
       key,
       promise: value,
       expiresAt,
-      isResolved: !isPromise,
+      isResolved: !isThenable,
     });
 
-    // Track promise resolution to enable future eviction
-    if (isPromise) {
-      (value as Promise<U>).then(
-        () => this._markResolved(key),
-        () => this._markResolved(key)
-      );
+    // Track thenable resolution to enable future eviction
+    if (isThenable) {
+      const markResolved = () => this._markResolved(key);
+      (value as PromiseLike<U>).then(markResolved, markResolved);
     }
 
     // Ensure cleanup is running when a new item is added
@@ -303,6 +301,19 @@ export class PromiseCacheX<T = unknown> {
       typeof fetcherOrPromise === "function"
         ? (fetcherOrPromise as () => Promise<U> | U)()
         : fetcherOrPromise
+    );
+  }
+
+  /**
+   * Duck-type check for thenables (Promise-like objects).
+   * More robust than `instanceof Promise` as it works across realms
+   * and with Promise libraries like Bluebird.
+   */
+  private _isThenable(value: unknown): value is PromiseLike<unknown> {
+    return (
+      value !== null &&
+      typeof value === 'object' &&
+      typeof (value as any).then === 'function'
     );
   }
 }

@@ -497,5 +497,47 @@ describe("PromiseCacheX", () => {
       await lruCache.get("key3", "value3");
       expect(lruCache.size()).toBe(2);
     });
+
+    it("should handle custom thenables (non-Promise objects with .then)", async () => {
+      const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 2 });
+
+      // Create a custom thenable (not a native Promise)
+      let resolveThenable: (value: string) => void;
+      const customThenable: PromiseLike<string> = {
+        then<TResult1 = string, TResult2 = never>(
+          onFulfilled?: ((value: string) => TResult1 | PromiseLike<TResult1>) | null,
+          onRejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+        ): PromiseLike<TResult1 | TResult2> {
+          return new Promise((resolve, reject) => {
+            resolveThenable = (value: string) => {
+              if (onFulfilled) {
+                resolve(onFulfilled(value) as TResult1);
+              } else {
+                resolve(value as unknown as TResult1);
+              }
+            };
+          });
+        }
+      };
+
+      // Start the thenable request (not resolved yet)
+      const pending = lruCache.get("thenable", () => customThenable);
+
+      // Add a resolved item
+      await lruCache.get("key1", "value1");
+
+      // Cache is at capacity, but thenable should be protected
+      await lruCache.get("key2", "value2");
+
+      expect(lruCache.has("thenable")).toBe(true); // Protected while pending
+      expect(lruCache.has("key1")).toBe(false); // Evicted (LRU)
+      expect(lruCache.has("key2")).toBe(true);
+
+      // Resolve the thenable
+      resolveThenable!("resolved");
+      await pending;
+
+      expect(await lruCache.get("thenable", "fallback")).toBe("resolved");
+    });
   });
 });
