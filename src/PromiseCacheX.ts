@@ -269,18 +269,26 @@ export class PromiseCacheX<T = unknown> {
   }
 
   /**
-   * Finds the least recently used item that is safe to evict.
-   * Uses Map insertion order - first resolved item is LRU.
+   * Finds the best item to evict.
+   * Priority: 1) Expired items, 2) LRU resolved item.
    * Skips items with pending (unresolved) promises.
    * Returns null if no evictable items exist.
    */
   private _findLRUCandidate(): string | null {
+    const now = Date.now();
+    let firstResolved: string | null = null;
+
     for (const [key, item] of this.cache) {
-      if (item.isResolved) {
-        return key;
-      }
+      if (!item.isResolved) continue;
+
+      // Prefer expired items for eviction
+      if (item.expiresAt <= now) return key;
+
+      // Track first resolved as LRU fallback
+      if (firstResolved === null) firstResolved = key;
     }
-    return null;
+
+    return firstResolved;
   }
 
   /**

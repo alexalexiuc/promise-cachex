@@ -469,6 +469,32 @@ describe("PromiseCacheX", () => {
       expect(lruCache.has("key4")).toBe(true);
     });
 
+    it("should prefer evicting expired items over valid LRU items", async () => {
+      const lruCache = new PromiseCacheX({
+        ttl: 5000,
+        maxEntries: 3,
+        cleanupInterval: 0 // Disable auto-cleanup to control expiry manually
+      });
+
+      // Add items with different TTLs
+      await lruCache.get("shortTTL", "value1", { ttl: 100 }); // Expires quickly
+      await lruCache.get("longTTL1", "value2"); // 5000ms TTL
+      await lruCache.get("longTTL2", "value3"); // 5000ms TTL
+
+      // Expire shortTTL
+      jest.advanceTimersByTime(101);
+
+      // Now cache has: [shortTTL (expired), longTTL1 (valid), longTTL2 (valid)]
+      // LRU order would evict longTTL1, but we should prefer expired shortTTL
+      await lruCache.get("newKey", "value4");
+
+      expect(lruCache.size()).toBe(3);
+      expect(lruCache.has("shortTTL")).toBe(false); // Expired, evicted first
+      expect(lruCache.has("longTTL1")).toBe(true); // Valid, kept
+      expect(lruCache.has("longTTL2")).toBe(true); // Valid, kept
+      expect(lruCache.has("newKey")).toBe(true);
+    });
+
     it("should handle maxEntries of 1", async () => {
       const lruCache = new PromiseCacheX({ ttl: 5000, maxEntries: 1 });
 
