@@ -1,5 +1,9 @@
 # Changelog
 
+## <small>1.7.2 (2026-01-04)</small>
+
+* Merge branch 'main' of github.com:alexalexiuc/promise-cachex ([e1535ca](https://github.com/alexalexiuc/promise-cachex/commit/e1535ca))
+
 ## <small>1.7.1 (2026-01-04)</small>
 
 * fix: try fix github-actinos perms ([3263b15](https://github.com/alexalexiuc/promise-cachex/commit/3263b15))
