@@ -180,7 +180,7 @@ export class PromiseCacheX<T = unknown> {
       this._evictIfNeeded();
     } else {
       // Delete existing key so re-insert moves it to end (most recently used)
-      this.cache.delete(key);
+      this._delete(key);
     }
 
     this.cache.set(key, {
