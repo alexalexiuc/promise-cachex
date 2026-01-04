@@ -1,5 +1,9 @@
 # Changelog
 
+## <small>1.7.1 (2026-01-04)</small>
+
+* fix: try fix github-actinos perms ([3263b15](https://github.com/alexalexiuc/promise-cachex/commit/3263b15))
+
 ## 1.7.0 (2025-09-29)
 
 * feat: Add loose & strict cache typings ([d3c3892](https://github.com/alexalexiuc/promise-cachex/commit/d3c3892))
