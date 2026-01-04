@@ -10,6 +10,7 @@ module.exports = defineConfig(
   {
     rules: {
       indent: ['error', 2],
+      quotes: ['error', 'single'],
       '@typescript-eslint/consistent-type-definitions': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
     },
