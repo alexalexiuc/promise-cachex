@@ -62,8 +62,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Configure Git identity
+        run: |
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "actions@github.com"
+
       - name: Run Release-It
         run: npm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to npm
         run: npm publish
