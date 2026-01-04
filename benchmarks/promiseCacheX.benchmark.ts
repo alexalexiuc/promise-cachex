@@ -28,6 +28,10 @@ const populateCache = async (numKeys: number, cache: PromiseCacheX) => {
 const cache1000 = new PromiseCacheX();
 const cache10000 = new PromiseCacheX();
 
+// LRU bounded caches for eviction benchmarks
+const lruCache1000 = new PromiseCacheX({ maxEntries: 1000 });
+const lruCache100 = new PromiseCacheX({ maxEntries: 100 });
+
 bench
   .add("Cache 1,000 Keys", async () => {
     await populateCache(1000, cache1000);
@@ -48,6 +52,32 @@ bench
       await cache10000.get(`key-${i}`, fetcher, { ttl: 5000 });
     }
     logPerformance("After retrieving 10,000 keys");
+  })
+  .add("LRU Eviction (10,000 inserts, max 1,000)", async () => {
+    // Insert 10,000 keys into cache with maxEntries=1000
+    // This triggers 9,000 evictions
+    for (let i = 0; i < 10000; i++) {
+      await lruCache1000.get(`lru-key-${i}`, fetcher, { ttl: 5000 });
+    }
+    logPerformance("After LRU eviction (10k inserts, max 1k)");
+  })
+  .add("LRU Eviction (10,000 inserts, max 100)", async () => {
+    // Insert 10,000 keys into cache with maxEntries=100
+    // This triggers 9,900 evictions - more pressure
+    for (let i = 0; i < 10000; i++) {
+      await lruCache100.get(`lru-key-${i}`, fetcher, { ttl: 5000 });
+    }
+    logPerformance("After LRU eviction (10k inserts, max 100)");
+  })
+  .add("LRU Cache Hits with Reordering (1,000 keys)", async () => {
+    // Pre-populate, then access in reverse order to trigger reordering
+    const reorderCache = new PromiseCacheX({ maxEntries: 1000 });
+    await populateCache(1000, reorderCache);
+    // Access in reverse order - each hit triggers _moveToEnd
+    for (let i = 999; i >= 0; i--) {
+      await reorderCache.get(`key-${i}`, fetcher, { ttl: 5000 });
+    }
+    logPerformance("After LRU reordering (1k keys)");
   });
 
 (async () => {

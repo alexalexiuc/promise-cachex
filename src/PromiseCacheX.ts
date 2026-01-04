@@ -4,6 +4,7 @@ export type CachedItem<T = unknown> = {
   key: string;
   promise: Promise<T> | T;
   expiresAt: number;
+  isResolved: boolean;
 };
 
 type Cache<T = unknown> = Map<string, CachedItem<T>>;
@@ -24,6 +25,13 @@ export type CacheOptions = {
    * Note that this is not the TTL of the items, but the interval for checking expired items.
    */
   cleanupInterval?: number;
+  /**
+   * Maximum number of entries in the cache.
+   * When the limit is reached, the least recently used entry is evicted.
+   * Entries with pending (unresolved) promises are protected from eviction.
+   * If not set, the cache is unbounded.
+   */
+  maxEntries?: number;
 };
 
 type ItemOptions = {
@@ -52,10 +60,12 @@ export class PromiseCacheX<T = unknown> {
   private ttl: number;
   private cleanupInterval: number;
   private cleanupTimer: NodeJS.Timeout | null = null;
+  private maxEntries: number | undefined;
 
   constructor(options?: CacheOptions) {
     this.ttl = options?.ttl ?? DEFAULT_TTL;
     this.cleanupInterval = options?.cleanupInterval ?? DEFAULT_TTL_VERIFICATION;
+    this.maxEntries = options?.maxEntries;
   }
 
   /**
@@ -76,6 +86,8 @@ export class PromiseCacheX<T = unknown> {
     if (this.cache.has(key)) {
       const item = this.cache.get(key)!;
       if (item.expiresAt > now) {
+        // Move to end of Map for LRU tracking (most recently used)
+        this._moveToEnd(key, item);
         return this._handlePromise<U>(key, item.promise as Promise<U> | U);
       }
     }
@@ -126,6 +138,21 @@ export class PromiseCacheX<T = unknown> {
     return this.cache.has(key);
   }
 
+  /**
+   * Returns the maximum entries limit, or undefined if unbounded.
+   */
+  getMaxEntries(): number | undefined {
+    return this.maxEntries;
+  }
+
+  /**
+   * Returns true if the cache is at or over capacity.
+   * Always returns false if maxEntries is not set.
+   */
+  isAtCapacity(): boolean {
+    return this.maxEntries !== undefined && this.cache.size >= this.maxEntries;
+  }
+
   set<U extends LooseIfUnknown<T>>(
     key: string,
     value: Promise<U> | U,
@@ -144,11 +171,31 @@ export class PromiseCacheX<T = unknown> {
       (options?.ttl ?? this.ttl) === 0
         ? +Infinity
         : now + (options?.ttl || this.ttl);
+
+    const isThenable = this._isThenable(value);
+    const isNewKey = !this.cache.has(key);
+
+    if (isNewKey) {
+      // Evict before inserting if we're at capacity
+      this._evictIfNeeded();
+    } else {
+      // Delete existing key so re-insert moves it to end (most recently used)
+      this._delete(key);
+    }
+
     this.cache.set(key, {
       key,
       promise: value,
       expiresAt,
+      isResolved: !isThenable,
     });
+
+    // Track thenable resolution to enable future eviction
+    if (isThenable) {
+      const markResolved = () => this._markResolved(key);
+      (value as PromiseLike<U>).then(markResolved, markResolved);
+    }
+
     // Ensure cleanup is running when a new item is added
     this._startCleanup();
   }
@@ -167,6 +214,15 @@ export class PromiseCacheX<T = unknown> {
 
   private _delete(key: string): void {
     this.cache.delete(key);
+  }
+
+  /**
+   * Moves an item to the end of the Map (most recently used position).
+   * This exploits Map's insertion order for O(1) LRU tracking.
+   */
+  private _moveToEnd(key: string, item: CachedItem<LooseIfUnknown<T>>): void {
+    this.cache.delete(key);
+    this.cache.set(key, item);
   }
 
   private _startCleanup(): void {
@@ -193,6 +249,58 @@ export class PromiseCacheX<T = unknown> {
     }
   }
 
+  /**
+   * Evicts least recently used entries until cache is under maxEntries.
+   * Protects entries with pending (unresolved) promises from eviction.
+   */
+  private _evictIfNeeded(): void {
+    if (this.maxEntries === undefined) return;
+
+    while (this.cache.size >= this.maxEntries) {
+      const evictKey = this._findLRUCandidate();
+      if (evictKey === null) {
+        // All items are pending promises - cannot evict
+        break;
+      }
+      this._delete(evictKey);
+    }
+
+    this._stopCleanupIfNeeded();
+  }
+
+  /**
+   * Finds the best item to evict.
+   * Priority: 1) Expired items, 2) LRU resolved item.
+   * Skips items with pending (unresolved) promises.
+   * Returns null if no evictable items exist.
+   */
+  private _findLRUCandidate(): string | null {
+    const now = Date.now();
+    let firstResolved: string | null = null;
+
+    for (const [key, item] of this.cache) {
+      if (!item.isResolved) continue;
+
+      // Prefer expired items for eviction
+      if (item.expiresAt <= now) return key;
+
+      // Track first resolved as LRU fallback
+      if (firstResolved === null) firstResolved = key;
+    }
+
+    return firstResolved;
+  }
+
+  /**
+   * Marks a cached item as resolved, making it eligible for LRU eviction.
+   */
+  private _markResolved(key: string): void {
+    const item = this.cache.get(key);
+    if (item) {
+      item.isResolved = true;
+    }
+  }
+
   private _fetchValue<U extends LooseIfUnknown<T>>(
     fetcherOrPromise: FetchOrPromise<U>
   ): Promise<U> | U {
@@ -201,6 +309,19 @@ export class PromiseCacheX<T = unknown> {
       typeof fetcherOrPromise === "function"
         ? (fetcherOrPromise as () => Promise<U> | U)()
         : fetcherOrPromise
+    );
+  }
+
+  /**
+   * Duck-type check for thenables (Promise-like objects).
+   * More robust than `instanceof Promise` as it works across realms
+   * and with Promise libraries like Bluebird.
+   */
+  private _isThenable(value: unknown): value is PromiseLike<unknown> {
+    return (
+      value !== null &&
+      typeof value === 'object' &&
+      typeof (value as any).then === 'function'
     );
   }
 }

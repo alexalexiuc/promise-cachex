@@ -47,10 +47,56 @@ console.log(await cache.get("key2", "static value")); // 'static value'
 ✅ **Promise-Aware** – Stores and returns pending promises to avoid duplicate calls.
 ✅ **Supports Both Async and Sync Values** – Cache promises, async functions, sync functions, or direct values.
 ✅ **TTL Expiry** – Items automatically expire after a configurable time.
+✅ **LRU Eviction** – Bounded caches with least-recently-used eviction policy.
 ✅ **Automatic Cleanup** – Removes expired entries at a regular interval.
 ✅ **Manual Deletion** – Allows explicit cache clearing when needed.
 ✅ **Error Handling** – Removes failed promises from the cache.
 ✅ **Efficient & Fast** – Optimized for speed and low memory overhead.
+
+---
+
+## 🗑️ LRU Eviction (Bounded Cache)
+
+For production use cases where memory must be bounded, use the `maxEntries` option to limit cache entries:
+
+```typescript
+const cache = new PromiseCacheX({
+  ttl: 60000,
+  maxEntries: 1000  // Maximum 1000 entries
+});
+
+// When cache reaches 1000 entries, least recently used items are evicted
+for (let i = 0; i < 1500; i++) {
+  await cache.get(`key${i}`, `value${i}`);
+}
+console.log(cache.size()); // 1000
+```
+
+### How LRU Eviction Works
+
+1. **Access Tracking** – Each `get()` call moves the item to the end of the internal Map (most recently used position)
+2. **Eviction on Insert** – When adding a new key would exceed `maxEntries`, the least recently used item is evicted in O(1) time
+3. **Pending Promise Protection** – Items with unresolved promises are **never evicted** to preserve promise coalescing
+
+### Important Behaviors
+
+- **TTL vs LRU**: Items may be evicted before their TTL expires if the cache is at capacity
+- **Backward Compatible**: If `maxEntries` is not set, the cache is unbounded (original behavior)
+- **Temporary Overflow**: If all items have pending promises, cache may temporarily exceed `maxEntries`
+
+```typescript
+// Pending promises are protected from eviction
+const cache = new PromiseCacheX({ maxEntries: 2 });
+
+const slow = cache.get("slow", () =>
+  new Promise(r => setTimeout(() => r("done"), 5000))
+);
+
+await cache.get("key1", "value1");
+await cache.get("key2", "value2"); // Evicts key1, not "slow"
+
+console.log(cache.has("slow")); // true (protected while pending)
+```
 
 ---
 
@@ -64,6 +110,7 @@ Creates a new instance of `PromiseCacheX`.
 | ----------------- | -------- | -------------------- | ------------------------------------------------- |
 | `ttl`             | `number` | `3600000` (1 hour)   | Default TTL in milliseconds. `0` means no TTL.    |
 | `cleanupInterval` | `number` | `300000` (5 minutes) | Interval in milliseconds to remove expired items. |
+| `maxEntries`      | `number` | `undefined`          | Max cache entries. When reached, LRU items are evicted. |
 
 ---
 
@@ -156,6 +203,32 @@ Checks if a key exists in the cache.
 ```typescript
 console.log(cache.has("key1"));
 ```
+
+---
+
+### **`getMaxEntries(): number | undefined`**
+
+Returns the maximum entries limit, or `undefined` if unbounded.
+
+```typescript
+const cache = new PromiseCacheX({ maxEntries: 1000 });
+console.log(cache.getMaxEntries()); // 1000
+```
+
+---
+
+### **`isAtCapacity(): boolean`**
+
+Returns `true` if the cache is at or over its maximum entries limit.
+
+```typescript
+const cache = new PromiseCacheX({ maxEntries: 2 });
+await cache.get("key1", "value1");
+console.log(cache.isAtCapacity()); // false
+await cache.get("key2", "value2");
+console.log(cache.isAtCapacity()); // true
+```
+
 ---
 
 ## 🔤 Typing Modes: **Strict vs Loose** (Generics)
@@ -274,19 +347,20 @@ Here are the latest performance benchmarks for `PromiseCacheX`:
 
 | Task                                 | Latency Avg (ns) | Throughput Avg (ops/s) |
 | ------------------------------------ | ---------------- | ---------------------- |
-| Cache 1,000 Keys                     | 216,853          | 4,824                  |
-| Cache 10,000 Keys                    | 2,213,626        | 461                    |
-| Retrieve Cached Values (1,000 keys)  | 221,039          | 4,756                  |
-| Retrieve Cached Values (10,000 keys) | 2,136,370        | 476                    |
+| Cache 1,000 Keys                     | 344,310          | 3,685                  |
+| Cache 10,000 Keys                    | 3,463,749        | 308                    |
+| Retrieve Cached Values (1,000 keys)  | 343,742          | 3,699                  |
+| Retrieve Cached Values (10,000 keys) | 3,475,116        | 307                    |
 
-### **Memory & CPU Usage**
+### **LRU Eviction Performance**
 
-| Action                       | Memory (MB) | CPU Time (ms) |
-| ---------------------------- | ----------- | ------------- |
-| After caching 1,000 keys     | 153.22      | 21,296        |
-| After caching 10,000 keys    | 208.22      | 39,687        |
-| After retrieving 1,000 keys  | 206.88      | 60,765        |
-| After retrieving 10,000 keys | 271.31      | 83,984        |
+| Task                                    | Latency Avg (ns) | Throughput Avg (ops/s) | Notes                    |
+| --------------------------------------- | ---------------- | ---------------------- | ------------------------ |
+| LRU Eviction (10k inserts, max 1,000)   | 10,032,003       | 102                    | 9,000 evictions          |
+| LRU Eviction (10k inserts, max 100)     | 6,137,702        | 171                    | 9,900 evictions          |
+| LRU Cache Hits with Reordering (1k)     | 551,000 (median) | 1,815                  | 1,000 Map reorder ops    |
+
+> **Note**: Smaller `maxEntries` can be faster because `_findLRUCandidate()` returns the first resolved item in O(1) time. With fewer entries, there's less chance of pending promises blocking eviction.
 
 ---
 
