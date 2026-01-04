@@ -1,5 +1,9 @@
 # Changelog
 
+## <small>1.7.1 (2026-01-04)</small>
+
+* fix: lock @release-it/conventional-changelog due to whatBump issue ([1350d86](https://github.com/alexalexiuc/promise-cachex/commit/1350d86))
+
 ## 1.7.0 (2025-09-29)
 
 * feat: Add loose & strict cache typings ([d3c3892](https://github.com/alexalexiuc/promise-cachex/commit/d3c3892))
