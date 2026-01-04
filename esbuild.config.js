@@ -3,7 +3,7 @@ module.exports = {
   entryPoints: ['src/index.ts'],
   bundle: true,
   packages: 'external',
-  target: ['node20'],
+  target: ['node24'],
   conditions: ['default'],
   treeShaking: true,
   sourcemap: false,
