@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { PromiseCacheX } from "./PromiseCacheX";
 
 describe("PromiseCacheX", () => {
@@ -532,9 +533,9 @@ describe("PromiseCacheX", () => {
       const customThenable: PromiseLike<string> = {
         then<TResult1 = string, TResult2 = never>(
           onFulfilled?: ((value: string) => TResult1 | PromiseLike<TResult1>) | null,
-          onRejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+          _onRejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
         ): PromiseLike<TResult1 | TResult2> {
-          return new Promise((resolve, reject) => {
+          return new Promise((resolve, _reject) => {
             resolveThenable = (value: string) => {
               if (onFulfilled) {
                 resolve(onFulfilled(value) as TResult1);
@@ -547,7 +548,7 @@ describe("PromiseCacheX", () => {
       };
 
       // Start the thenable request (not resolved yet)
-      const pending = lruCache.get("thenable", () => customThenable);
+      const pending = lruCache.get("thenable", () => customThenable as unknown);
 
       // Add a resolved item
       await lruCache.get("key1", "value1");
