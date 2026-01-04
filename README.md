@@ -17,27 +17,25 @@ npm install promise-cachex
 ## 🔧 Usage
 
 ```typescript
-import { PromiseCacheX } from "promise-cachex";
+import { PromiseCacheX } from 'promise-cachex';
 
 const cache = new PromiseCacheX({ ttl: 5000, cleanupInterval: 2000 }); // 5s TTL, cleanup every 2s
 
 async function fetchData() {
-  return new Promise((resolve) =>
-    setTimeout(() => resolve("cached data"), 1000)
-  );
+  return new Promise((resolve) => setTimeout(() => resolve('cached data'), 1000));
 }
 
 (async () => {
-  const result1 = await cache.get("key1", fetchData, { ttl: 5000 });
+  const result1 = await cache.get('key1', fetchData, { ttl: 5000 });
   console.log(result1); // 'cached data'
 
-  const result2 = await cache.get("key1", fetchData, { ttl: 5000 });
+  const result2 = await cache.get('key1', fetchData, { ttl: 5000 });
   console.log(result2); // Returns cached value immediately
 })();
 
 // Supports caching synchronous values too
-cache.get("key2", "static value");
-console.log(await cache.get("key2", "static value")); // 'static value'
+cache.get('key2', 'static value');
+console.log(await cache.get('key2', 'static value')); // 'static value'
 ```
 
 ---
@@ -62,7 +60,7 @@ For production use cases where memory must be bounded, use the `maxEntries` opti
 ```typescript
 const cache = new PromiseCacheX({
   ttl: 60000,
-  maxEntries: 1000  // Maximum 1000 entries
+  maxEntries: 1000, // Maximum 1000 entries
 });
 
 // When cache reaches 1000 entries, least recently used items are evicted
@@ -88,14 +86,12 @@ console.log(cache.size()); // 1000
 // Pending promises are protected from eviction
 const cache = new PromiseCacheX({ maxEntries: 2 });
 
-const slow = cache.get("slow", () =>
-  new Promise(r => setTimeout(() => r("done"), 5000))
-);
+const slow = cache.get('slow', () => new Promise((r) => setTimeout(() => r('done'), 5000)));
 
-await cache.get("key1", "value1");
-await cache.get("key2", "value2"); // Evicts key1, not "slow"
+await cache.get('key1', 'value1');
+await cache.get('key2', 'value2'); // Evicts key1, not "slow"
 
-console.log(cache.has("slow")); // true (protected while pending)
+console.log(cache.has('slow')); // true (protected while pending)
 ```
 
 ---
@@ -106,10 +102,10 @@ console.log(cache.has("slow")); // true (protected while pending)
 
 Creates a new instance of `PromiseCacheX`.
 
-| Option            | Type     | Default              | Description                                       |
-| ----------------- | -------- | -------------------- | ------------------------------------------------- |
-| `ttl`             | `number` | `3600000` (1 hour)   | Default TTL in milliseconds. `0` means no TTL.    |
-| `cleanupInterval` | `number` | `300000` (5 minutes) | Interval in milliseconds to remove expired items. |
+| Option            | Type     | Default              | Description                                             |
+| ----------------- | -------- | -------------------- | ------------------------------------------------------- |
+| `ttl`             | `number` | `3600000` (1 hour)   | Default TTL in milliseconds. `0` means no TTL.          |
+| `cleanupInterval` | `number` | `300000` (5 minutes) | Interval in milliseconds to remove expired items.       |
 | `maxEntries`      | `number` | `undefined`          | Max cache entries. When reached, LRU items are evicted. |
 
 ---
@@ -131,28 +127,26 @@ Retrieves a cached value or fetches and caches it if not available.
 
 ```typescript
 // Caching an async function
-const result = await cache.get("key1", async () => "value", { ttl: 5000 });
+const result = await cache.get('key1', async () => 'value', { ttl: 5000 });
 
 // Caching a synchronous function
-const syncResult = await cache.get("key2", () => "sync value");
+const syncResult = await cache.get('key2', () => 'sync value');
 
 // Caching a direct promise
-const promiseResult = await cache.get(
-  "key3",
-  Promise.resolve("promised value")
-);
+const promiseResult = await cache.get('key3', Promise.resolve('promised value'));
 
 // Caching a direct value
-const directResult = await cache.get("key4", "direct value");
+const directResult = await cache.get('key4', 'direct value');
 ```
 
 ---
+
 ### **`set<T>(key: string, value: T | Promise<T>, options?: ItemOptions): void`**
 
 Sets a value in the cache.
 
 ```typescript
-cache.set("key1", "value1", { ttl: 5000 });
+cache.set('key1', 'value1', { ttl: 5000 });
 ```
 
 ---
@@ -162,7 +156,7 @@ cache.set("key1", "value1", { ttl: 5000 });
 Removes a specific key from the cache.
 
 ```typescript
-cache.delete("key1");
+cache.delete('key1');
 ```
 
 ---
@@ -198,10 +192,11 @@ console.log(cache.keys());
 ---
 
 ### **`has(key: string): boolean`**
+
 Checks if a key exists in the cache.
 
 ```typescript
-console.log(cache.has("key1"));
+console.log(cache.has('key1'));
 ```
 
 ---
@@ -223,9 +218,9 @@ Returns `true` if the cache is at or over its maximum entries limit.
 
 ```typescript
 const cache = new PromiseCacheX({ maxEntries: 2 });
-await cache.get("key1", "value1");
+await cache.get('key1', 'value1');
 console.log(cache.isAtCapacity()); // false
-await cache.get("key2", "value2");
+await cache.get('key2', 'value2');
 console.log(cache.isAtCapacity()); // true
 ```
 
@@ -239,25 +234,17 @@ console.log(cache.isAtCapacity()); // true
 
 The class is generic: `PromiseCacheX<T = unknown>`.
 
-* If you **omit** `T`, the cache runs in **loose mode** (accepts mixed value types).
-* If you **provide** `T`, the cache runs in **strict mode** (all values must conform to `T`).
-* You can still provide a type argument to `get<U>()` and `set<U>()`, but it is **constrained** so that `U` must extend the cache’s type.
+- If you **omit** `T`, the cache runs in **loose mode** (accepts mixed value types).
+- If you **provide** `T`, the cache runs in **strict mode** (all values must conform to `T`).
+- You can still provide a type argument to `get<U>()` and `set<U>()`, but it is **constrained** so that `U` must extend the cache’s type.
 
 **Method signatures (simplified):**
 
 ```ts
 class PromiseCacheX<T = unknown> {
-  get<U extends T = T>(
-    key: string,
-    fetcherOrPromise: (() => Promise<U> | U) | Promise<U> | U,
-    options?: { ttl?: number }
-  ): Promise<U>;
+  get<U extends T = T>(key: string, fetcherOrPromise: (() => Promise<U> | U) | Promise<U> | U, options?: { ttl?: number }): Promise<U>;
 
-  set<U extends T>(
-    key: string,
-    value: U | Promise<U>,
-    options?: { ttl?: number }
-  ): void;
+  set<U extends T>(key: string, value: U | Promise<U>, options?: { ttl?: number }): void;
 }
 ```
 
@@ -270,14 +257,14 @@ class PromiseCacheX<T = unknown> {
 When you don’t pass a generic, you can mix types freely. You may still annotate each call for clarity.
 
 ```ts
-import { PromiseCacheX } from "promise-cachex";
+import { PromiseCacheX } from 'promise-cachex';
 
 const loose = new PromiseCacheX(); // T omitted → loose mode
 
 // Store different types
-await loose.get<number>("n1", 42);
-await loose.get<string>("s1", () => "hello");
-await loose.get<{ id: string }>("u1", Promise.resolve({ id: "abc" }));
+await loose.get<number>('n1', 42);
+await loose.get<string>('s1', () => 'hello');
+await loose.get<{ id: string }>('u1', Promise.resolve({ id: 'abc' }));
 
 // All OK — loose mode accepts them
 ```
@@ -296,13 +283,13 @@ type User = { id: number; name: string };
 const strict = new PromiseCacheX<User>(); // typed cache
 
 // ✅ OK: value matches `User`
-await strict.get<User>("u:1", () => ({ id: 1, name: "Ana" }));
+await strict.get<User>('u:1', () => ({ id: 1, name: 'Ana' }));
 
 // ❌ Error: `string` does not extend `User`
 // await strict.get<string>("bad", "oops");
 
 // ✅ OK: promise of `User`
-strict.set("u:2", Promise.resolve({ id: 2, name: "Ion" }));
+strict.set('u:2', Promise.resolve({ id: 2, name: 'Ion' }));
 ```
 
 This is ideal for domain caches (e.g., Users, Products) where consistency matters.
@@ -320,10 +307,10 @@ type MaybeUser = User | null;
 const cache = new PromiseCacheX<MaybeUser>();
 
 // ✅ OK: `User` is a subtype of `User | null`
-const u = await cache.get<User>("u:1", async () => ({ id: 1, name: "Ana" }));
+const u = await cache.get<User>('u:1', async () => ({ id: 1, name: 'Ana' }));
 
 // ✅ Also OK: storing `null`
-await cache.get<MaybeUser>("u:2", null);
+await cache.get<MaybeUser>('u:2', null);
 
 // ❌ Error: `string` not assignable to `User | null`
 // await cache.get<string>("bad", "nope");
@@ -335,8 +322,9 @@ await cache.get<MaybeUser>("u:2", null);
 
 ### ✅ When to use which
 
-* **Loose mode** (omit `T`): quick utility cache, heterogeneous values, prototyping.
-* **Strict mode** (`PromiseCacheX<T>`): domain caches with strong guarantees and easier refactors.
+- **Loose mode** (omit `T`): quick utility cache, heterogeneous values, prototyping.
+- **Strict mode** (`PromiseCacheX<T>`): domain caches with strong guarantees and easier refactors.
+
 ---
 
 ## 📊 Benchmark Results
@@ -354,11 +342,11 @@ Here are the latest performance benchmarks for `PromiseCacheX`:
 
 ### **LRU Eviction Performance**
 
-| Task                                    | Latency Avg (ns) | Throughput Avg (ops/s) | Notes                    |
-| --------------------------------------- | ---------------- | ---------------------- | ------------------------ |
-| LRU Eviction (10k inserts, max 1,000)   | 10,032,003       | 102                    | 9,000 evictions          |
-| LRU Eviction (10k inserts, max 100)     | 6,137,702        | 171                    | 9,900 evictions          |
-| LRU Cache Hits with Reordering (1k)     | 551,000 (median) | 1,815                  | 1,000 Map reorder ops    |
+| Task                                  | Latency Avg (ns) | Throughput Avg (ops/s) | Notes                 |
+| ------------------------------------- | ---------------- | ---------------------- | --------------------- |
+| LRU Eviction (10k inserts, max 1,000) | 10,032,003       | 102                    | 9,000 evictions       |
+| LRU Eviction (10k inserts, max 100)   | 6,137,702        | 171                    | 9,900 evictions       |
+| LRU Cache Hits with Reordering (1k)   | 551,000 (median) | 1,815                  | 1,000 Map reorder ops |
 
 > **Note**: Smaller `maxEntries` can be faster because `_findLRUCandidate()` returns the first resolved item in O(1) time. With fewer entries, there's less chance of pending promises blocking eviction.
 

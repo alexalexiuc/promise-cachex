@@ -1,5 +1,5 @@
-const esbuild = require('esbuild')
-const defaultConfig = require('./esbuild.config.js')
+const esbuild = require('esbuild');
+const defaultConfig = require('./esbuild.config.js');
 
 function build() {
   console.log(`🚀 Building esm bundle for package...`);
@@ -14,4 +14,3 @@ function build() {
 }
 
 build();
-

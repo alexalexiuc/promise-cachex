@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   lint-test-build:
@@ -11,57 +14,61 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 20
-        cache: npm
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 24
+          cache: npm
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run Lint
-      run: npm run lint:check
+      - name: Run Lint
+        run: npm run lint:check
 
-    - name: Run Type-Check
-      run: npm run type-check
+      - name: Run Format Check
+        run: npm run format:check
 
-    - name: Run Tests
-      run: npm test
+      - name: Run Type-Check
+        run: npm run type-check
+
+      - name: Run Tests
+        run: npm test
 
   release-and-publish:
     name: Release and Publish
     needs: lint-test-build
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 20
-        cache: npm
-        registry-url: "https://registry.npmjs.org"
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Configure Git identity
-      run: |
-        git config --local user.name "GitHub Actions"
-        git config --local user.email "actions@github.com"
+      - name: Configure Git identity
+        run: |
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "actions@github.com"
 
-    - name: Run Release-It
-      run: npm run release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run Release-It
+        run: npm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Publish to npm
-      run: npm publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
