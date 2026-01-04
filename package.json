@@ -22,6 +22,8 @@
     "prepare": "husky",
     "lint:check": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "format:fix": "prettier --write \"**/*.{ts,js,json,md}\"",
     "type-check": "tsc --noEmit",
     "benchmarks": "npx ts-node ./benchmarks/promiseCacheX.benchmark.ts",
     "prepublishOnly": "npm run build",

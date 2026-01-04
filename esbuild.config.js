@@ -8,4 +8,4 @@ module.exports = {
   treeShaking: true,
   sourcemap: false,
   platform: 'node',
-}
+};

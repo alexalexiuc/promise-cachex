@@ -1,22 +1,26 @@
 // @ts-check
-const eslint = require('@eslint/js')
-const tseslint = require('typescript-eslint')
+const eslint = require('@eslint/js');
+const { defineConfig } = require('eslint/config');
+const tseslint = require('typescript-eslint');
 
-module.exports = tseslint.config(
+module.exports = defineConfig(
   eslint.configs.recommended,
   tseslint.configs.recommended,
   tseslint.configs.stylistic,
   {
     rules: {
       indent: ['error', 2],
-      "@typescript-eslint/consistent-type-definitions": "off",
-      "@typescript-eslint/no-explicit-any": "off",
+      '@typescript-eslint/consistent-type-definitions': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {
-    ignores: [
-      'dist-*',
-      '**/*.js'
-    ],
-  }
+    files: ['**/*.test.ts'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
+    ignores: ['dist-*', '**/*.js'],
+  },
 );

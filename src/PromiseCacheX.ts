@@ -35,7 +35,7 @@ export type CacheOptions = {
 };
 
 type ItemOptions = {
-    /**
+  /**
    * TTL in milliseconds for the cached item.
    * If not set, defaults to the cache's TTL.
    * 0 TTL will cache indefinitely.
@@ -48,9 +48,9 @@ const DEFAULT_TTL_VERIFICATION = 1000 * 60 * 5; // 5 minutes
 
 /**
  * Generic promise/value cache.
- * 
+ *
  * The cache will automatically remove expired items, at a given interval.
- * 
+ *
  * Typescript generics:
  * If you instantiate without a type arg (PromiseCacheX<>), value type is "loose" (any).
  * If you instantiate with a type (e.g. PromiseCacheX<number>), all values are restricted to that type.
@@ -79,7 +79,7 @@ export class PromiseCacheX<T = unknown> {
   async get<U extends LooseIfUnknown<T> = LooseIfUnknown<T>>(
     key: string,
     fetcherOrPromise: FetchOrPromise<U>,
-    options?: ItemOptions
+    options?: ItemOptions,
   ): Promise<U> {
     const now = Date.now();
 
@@ -153,24 +153,13 @@ export class PromiseCacheX<T = unknown> {
     return this.maxEntries !== undefined && this.cache.size >= this.maxEntries;
   }
 
-  set<U extends LooseIfUnknown<T>>(
-    key: string,
-    value: Promise<U> | U,
-    options?: ItemOptions
-  ): void {
+  set<U extends LooseIfUnknown<T>>(key: string, value: Promise<U> | U, options?: ItemOptions): void {
     this._set<U>(key, value, options);
   }
 
-  private _set<U extends LooseIfUnknown<T>>(
-    key: string,
-    value: Promise<U> | U,
-    options?: ItemOptions
-  ) {
+  private _set<U extends LooseIfUnknown<T>>(key: string, value: Promise<U> | U, options?: ItemOptions) {
     const now = Date.now();
-    const expiresAt =
-      (options?.ttl ?? this.ttl) === 0
-        ? +Infinity
-        : now + (options?.ttl || this.ttl);
+    const expiresAt = (options?.ttl ?? this.ttl) === 0 ? +Infinity : now + (options?.ttl || this.ttl);
 
     const isThenable = this._isThenable(value);
     const isNewKey = !this.cache.has(key);
@@ -193,17 +182,14 @@ export class PromiseCacheX<T = unknown> {
     // Track thenable resolution to enable future eviction
     if (isThenable) {
       const markResolved = () => this._markResolved(key);
-      (value as PromiseLike<U>).then(markResolved, markResolved);
+      value.then(markResolved, markResolved);
     }
 
     // Ensure cleanup is running when a new item is added
     this._startCleanup();
   }
 
-  private async _handlePromise<U extends LooseIfUnknown<T>>(
-    key: string,
-    promise: Promise<U> | U
-  ): Promise<U> {
+  private async _handlePromise<U extends LooseIfUnknown<T>>(key: string, promise: Promise<U> | U): Promise<U> {
     try {
       return await promise;
     } catch (error) {
@@ -301,15 +287,9 @@ export class PromiseCacheX<T = unknown> {
     }
   }
 
-  private _fetchValue<U extends LooseIfUnknown<T>>(
-    fetcherOrPromise: FetchOrPromise<U>
-  ): Promise<U> | U {
+  private _fetchValue<U extends LooseIfUnknown<T>>(fetcherOrPromise: FetchOrPromise<U>): Promise<U> | U {
     // Wrap in Promise.resolve to ensure consistent behavior
-    return Promise.resolve(
-      typeof fetcherOrPromise === "function"
-        ? (fetcherOrPromise as () => Promise<U> | U)()
-        : fetcherOrPromise
-    );
+    return Promise.resolve(typeof fetcherOrPromise === 'function' ? (fetcherOrPromise as () => Promise<U> | U)() : fetcherOrPromise);
   }
 
   /**
@@ -318,10 +298,6 @@ export class PromiseCacheX<T = unknown> {
    * and with Promise libraries like Bluebird.
    */
   private _isThenable(value: unknown): value is PromiseLike<unknown> {
-    return (
-      value !== null &&
-      typeof value === 'object' &&
-      typeof (value as any).then === 'function'
-    );
+    return value !== null && typeof value === 'object' && typeof (value as any).then === 'function';
   }
 }

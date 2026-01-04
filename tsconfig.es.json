@@ -6,6 +6,6 @@
     "stripInternal": true,
     "importHelpers": true,
     "module": "esnext",
-    "noEmitHelpers": true,
+    "noEmitHelpers": true
   }
 }

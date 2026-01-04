@@ -1,1 +1,1 @@
-export * from "./PromiseCacheX";
+export * from './PromiseCacheX';
