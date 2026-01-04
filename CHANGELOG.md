@@ -39,6 +39,7 @@
 ## <small>0.1.2 (2025-03-06)</small>
 
 * fix: Fix types export & add sideEffects free flag ([19648d3](https://github.com/alexalexiuc/promise-cachex/commit/19648d3))
+
 ## <small>0.1.1 (2025-02-11)</small>
 
 * chore: update gitignore ([dbb9a6b](https://github.com/alexalexiuc/promise-cachex/commit/dbb9a6b))
