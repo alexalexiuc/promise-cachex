@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.0 (2026-01-04)
+
+* feat: trigger version 1.8.0 release ([70bcf6a](https://github.com/alexalexiuc/promise-cachex/commit/70bcf6a))
+
 ## <small>1.7.2 (2026-01-04)</small>
 
 * Merge branch 'main' of github.com:alexalexiuc/promise-cachex ([e1535ca](https://github.com/alexalexiuc/promise-cachex/commit/e1535ca))
