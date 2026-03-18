@@ -7,7 +7,7 @@ function build() {
     .build({
       ...defaultConfig,
       format: 'esm',
-      outfile: 'dist-esm/index.js',
+      outfile: 'dist-esm/index.mjs',
     })
     .then(() => console.log('⚡ Done'))
     .catch(() => process.exit(1));

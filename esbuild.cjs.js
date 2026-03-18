@@ -7,7 +7,7 @@ function build() {
     .build({
       ...defaultConfig,
       format: 'cjs',
-      outfile: 'dist-cjs/index.js',
+      outfile: 'dist-cjs/index.cjs',
     })
     .then(() => console.log('⚡ Done'))
     .catch(() => process.exit(1));
