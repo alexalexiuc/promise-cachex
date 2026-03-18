@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0 (2026-03-18)
+
+* feat!: Add esm & cjs extension to build files ([ff7579e](https://github.com/alexalexiuc/promise-cachex/commit/ff7579e))
+
 ## 1.8.0 (2026-01-04)
 
 * feat: trigger version 1.8.0 release ([70bcf6a](https://github.com/alexalexiuc/promise-cachex/commit/70bcf6a))
